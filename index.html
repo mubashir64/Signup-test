@@ -1,115 +1,295 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Login & Signup</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background-color: #00ffeb;
-      margin: 0;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-    }
-
-    .container {
-      background: white;
-      border-radius: 10px;
-      padding: 20px;
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-      width: 300px;
-      text-align: center;
-    }
-
-    h2 {
-      margin-bottom: 20px;
-      color: #333;
-    }
-
-    input {
-      width: 90%;
-      padding: 10px;
-      margin: 10px 0;
-      border: 1px solid #ccc;
-      border-radius: 5px;
-    }
-
-    button {
-      width: 95%;
-      padding: 10px;
-      background-color: #00ffeb;
-      color: black;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-      font-size: 16px;
-    }
-
-    button:hover {
-      background-color: #00cbb3;
-    }
-
-    .message {
-      margin-top: 10px;
-      color: red;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Secure Auth System</title>
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
+        .hidden { display: none !important; }
+        .spinner {
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            width: 1rem;
+            height: 1rem;
+            animation: spin 1s ease-in-out infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
 </head>
-<body>
-  <div class="container" id="form-container">
-    <h2 id="form-title">Sign Up</h2>
-    <input type="text" id="username" placeholder="Username" required />
-    <input type="password" id="password" placeholder="Password" required />
-    <button onclick="handleSubmit()">Submit</button>
-    <p id="toggle-text">
-      Already have an account? <span onclick="toggleForm()" style="color: blue; cursor: pointer;">Login</span>
-    </p>
-    <p class="message" id="message"></p>
-  </div>
+<body class="flex items-center justify-center min-h-screen">
 
-  <script>
-    let isSignup = true;
+    <!-- Alert Box -->
+    <div id="alertBox" class="fixed top-5 left-1/2 transform -translate-x-1/2 min-w-[300px] p-4 mb-4 text-sm rounded-lg hidden shadow-lg text-center z-50 transition-all duration-300"></div>
 
-    function toggleForm() {
-      isSignup = !isSignup;
-      document.getElementById("form-title").innerText = isSignup ? "Sign Up" : "Login";
-      document.getElementById("toggle-text").innerHTML = isSignup
-        ? 'Already have an account? <span onclick="toggleForm()" style="color: blue; cursor: pointer;">Login</span>'
-        : 'Don\'t have an account? <span onclick="toggleForm()" style="color: blue; cursor: pointer;">Sign Up</span>';
-      document.getElementById("message").innerText = "";
-    }
+    <div class="w-full max-w-md p-8 bg-white rounded-xl shadow-lg relative overflow-hidden">
+        
+        <!-- Loading Overlay -->
+        <div id="loadingOverlay" class="absolute inset-0 bg-white/80 z-40 hidden flex-col items-center justify-center">
+            <div class="w-10 h-10 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
+            <p class="mt-4 text-gray-600 font-medium">Processing...</p>
+        </div>
 
-    function handleSubmit() {
-      const username = document.getElementById("username").value;
-      const password = document.getElementById("password").value;
-      const messageElement = document.getElementById("message");
+        <!-- 1. LOGIN FORM -->
+        <div id="loginView" class="block">
+            <h2 class="text-2xl font-bold text-gray-800 text-center mb-6">Welcome Back</h2>
+            <form id="loginForm" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Email (Google Account)</label>
+                    <input type="email" id="loginEmail" required class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Password</label>
+                    <input type="password" id="loginPassword" required class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition">
+                </div>
+                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-200 flex justify-center items-center">
+                    Request OTP
+                </button>
+            </form>
+            <p class="mt-4 text-center text-sm text-gray-600">
+                Don't have an account? <a href="#" id="showSignup" class="text-blue-600 hover:underline">Sign up</a>
+            </p>
+        </div>
 
-      if (!username || !password) {
-        messageElement.innerText = "Please fill out all fields.";
-        return;
-      }
+        <!-- 2. SIGN UP FORM -->
+        <div id="signupView" class="hidden">
+            <h2 class="text-2xl font-bold text-gray-800 text-center mb-6">Create Account</h2>
+            <form id="signupForm" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Email</label>
+                    <input type="email" id="signupEmail" required class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Password</label>
+                    <input type="password" id="signupPassword" required class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition">
+                </div>
+                <div class="text-xs text-gray-500 bg-gray-50 p-2 rounded">
+                    Security Note: Your current IP address will be captured and linked to your device upon registration.
+                </div>
+                <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-200 flex justify-center items-center">
+                    Sign Up
+                </button>
+            </form>
+            <p class="mt-4 text-center text-sm text-gray-600">
+                Already have an account? <a href="#" id="showLogin" class="text-blue-600 hover:underline">Log in</a>
+            </p>
+        </div>
 
-      if (isSignup) {
-        if (localStorage.getItem(username)) {
-          messageElement.innerText = "Username already exists.";
-        } else {
-          localStorage.setItem(username, password);
-          messageElement.style.color = "green";
-          messageElement.innerText = "Account created successfully!";
+        <!-- 3. OTP VERIFICATION FORM -->
+        <div id="otpView" class="hidden">
+            <h2 class="text-2xl font-bold text-gray-800 text-center mb-2">Verify Device</h2>
+            <p class="text-center text-gray-600 text-sm mb-6">An OTP has been sent to your email.</p>
+            <form id="otpForm" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Enter 6-Digit OTP</label>
+                    <input type="text" id="otpInput" maxlength="6" required class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg text-center tracking-[0.5em] font-bold text-lg focus:ring-blue-500 focus:border-blue-500 transition">
+                </div>
+                <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-200">
+                    Verify & Login
+                </button>
+                <button type="button" id="cancelOtp" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-2 px-4 rounded-lg transition duration-200">
+                    Cancel
+                </button>
+            </form>
+        </div>
+
+        <!-- 4. DASHBOARD (Logged In) -->
+        <div id="dashboardView" class="hidden text-center">
+            <div class="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+            </div>
+            <h2 class="text-2xl font-bold text-gray-800 mb-2">Dashboard</h2>
+            <p class="text-gray-600 mb-4">Logged in as: <span id="userEmailDisplay" class="font-semibold text-blue-600"></span></p>
+            
+            <div class="bg-yellow-50 text-yellow-800 border border-yellow-200 p-4 rounded-lg mb-6 text-sm text-left">
+                <strong>Active Session Feature:</strong> You are securely logged in. If you login from a new device, this device will be automatically logged out.
+            </div>
+
+            <button id="logoutBtn" class="w-full bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-200">
+                Secure Logout
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // =========================================================================
+        // IMPORTANT: PASTE YOUR GOOGLE APPS SCRIPT WEB APP URL HERE
+        // =========================================================================
+        const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxbFOqcoUZXlsEPm6fI_Ub010bSGtMb5nEjiy-hhtrqNzJGzOut-HTftLjT2_MfOdq1/exec"; 
+        
+        // UI Elements
+        const views = {
+            login: document.getElementById('loginView'),
+            signup: document.getElementById('signupView'),
+            otp: document.getElementById('otpView'),
+            dashboard: document.getElementById('dashboardView')
+        };
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const alertBox = document.getElementById('alertBox');
+        let tempEmail = ""; // Holds email during OTP phase
+        let sessionCheckInterval = null;
+
+        // On Load - check if already logged in
+        window.onload = () => {
+            const token = localStorage.getItem('sessionToken');
+            const email = localStorage.getItem('userEmail');
+            if (token && email) {
+                tempEmail = email;
+                showView('dashboard');
+                document.getElementById('userEmailDisplay').textContent = email;
+                startSessionPolling();
+            }
+        };
+
+        // Navigation toggles
+        document.getElementById('showSignup').addEventListener('click', (e) => { e.preventDefault(); showView('signup'); });
+        document.getElementById('showLogin').addEventListener('click', (e) => { e.preventDefault(); showView('login'); });
+        document.getElementById('cancelOtp').addEventListener('click', () => showView('login'));
+
+        function showView(viewName) {
+            Object.values(views).forEach(v => v.classList.add('hidden'));
+            views[viewName].classList.remove('hidden');
         }
-      } else {
-        const storedPassword = localStorage.getItem(username);
-        if (storedPassword === password) {
-          localStorage.setItem("isLoggedIn", true); // Save login status
-          window.location.href = "https://zenitoono.blogspot.com/?m=1"; // Redirect to dashboard
-        } else {
-          messageElement.innerText = "Invalid username or password.";
+
+        function showAlert(msg, type = "error") {
+            alertBox.textContent = msg;
+            alertBox.className = `fixed top-5 left-1/2 transform -translate-x-1/2 min-w-[300px] p-4 mb-4 text-sm rounded-lg shadow-lg text-center z-50 transition-all duration-300 ${
+                type === "success" ? "bg-green-100 text-green-800 border border-green-300" : "bg-red-100 text-red-800 border border-red-300"
+            }`;
+            alertBox.classList.remove('hidden');
+            setTimeout(() => alertBox.classList.add('hidden'), 5000);
         }
-      }
-    }
-  </script>
+
+        function setLoading(isLoad) {
+            isLoad ? loadingOverlay.classList.remove('hidden') : loadingOverlay.classList.add('hidden');
+        }
+
+        async function fetchGAS(payload) {
+            if(GAS_WEB_APP_URL === "YOUR_WEB_APP_URL_HERE") {
+                showAlert("Please configure the GAS_WEB_APP_URL in the HTML file first.");
+                return null;
+            }
+            try {
+                // GAS requires text/plain body to avoid CORS preflight errors cleanly from client
+                const res = await fetch(GAS_WEB_APP_URL, {
+                    method: 'POST',
+                    body: JSON.stringify(payload),
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+                });
+                return await res.json();
+            } catch (err) {
+                console.error(err);
+                showAlert("Network Error connecting to server.");
+                return null;
+            }
+        }
+
+        document.getElementById('signupForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('signupEmail').value;
+            const pass = document.getElementById('signupPassword').value;
+            
+            setLoading(true);
+            try {
+                // 1. Fetch IP dynamically
+                const ipRes = await fetch('https://api.ipify.org?format=json');
+                const ipData = await ipRes.json();
+                const ipAddress = ipData.ip;
+
+                // 2. Send data to GAS
+                const data = await fetchGAS({ action: 'signup', email: email, password: pass, ip: ipAddress });
+                if (data && data.success) {
+                    showAlert("Account created! Please log in.", "success");
+                    showView('login');
+                    document.getElementById('signupForm').reset();
+                } else if (data) {
+                    showAlert(data.message);
+                }
+            } catch(e) {
+                showAlert("Could not register. Try again.");
+            }
+            setLoading(false);
+        });
+
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('loginEmail').value;
+            const pass = document.getElementById('loginPassword').value;
+            
+            setLoading(true);
+            const data = await fetchGAS({ action: 'request_otp', email: email, password: pass });
+            if (data && data.success) {
+                showAlert(data.message, "success");
+                tempEmail = email; // store temporarily for verification
+                showView('otp');
+            } else if (data) {
+                showAlert(data.message);
+            }
+            setLoading(false);
+        });
+
+        document.getElementById('otpForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const otp = document.getElementById('otpInput').value;
+            
+            setLoading(true);
+            const data = await fetchGAS({ action: 'verify_otp', email: tempEmail, otp: otp });
+            if (data && data.success) {
+                // Success! Save session locally
+                localStorage.setItem('sessionToken', data.sessionToken);
+                localStorage.setItem('userEmail', tempEmail);
+                
+                document.getElementById('userEmailDisplay').textContent = tempEmail;
+                showAlert("Login Successful!", "success");
+                
+                // Clear forms
+                document.getElementById('loginForm').reset();
+                document.getElementById('otpForm').reset();
+                
+                showView('dashboard');
+                startSessionPolling();
+            } else if (data) {
+                showAlert(data.message);
+            }
+            setLoading(false);
+        });
+
+        function startSessionPolling() {
+            // Stop existing interval if any
+            if(sessionCheckInterval) clearInterval(sessionCheckInterval);
+            
+            // Check session every 10 seconds
+            sessionCheckInterval = setInterval(async () => {
+                const token = localStorage.getItem('sessionToken');
+                const email = localStorage.getItem('userEmail');
+                
+                if(!token || !email) { logout(false); return; }
+
+                const data = await fetchGAS({ action: 'check_session', email: email, sessionToken: token });
+                if (data && !data.valid) {
+                    // Token mismatch (logged in elsewhere or forced logout)
+                    showAlert("You have been logged out because a new device logged in.", "error");
+                    logout(true); // Forced logout
+                }
+            }, 10000); // 10000ms = 10s
+        }
+
+        function logout(forced = false) {
+            localStorage.removeItem('sessionToken');
+            localStorage.removeItem('userEmail');
+            if(sessionCheckInterval) clearInterval(sessionCheckInterval);
+            
+            showView('login');
+            if(!forced) showAlert("Logged out successfully.", "success");
+        }
+
+        document.getElementById('logoutBtn').addEventListener('click', () => logout(false));
+
+    </script>
 </body>
-  </html>
+</html>
